@@ -8,7 +8,7 @@ export default function Contact() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    subject: '',
+    phone: '',
     message: '',
   });
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -18,11 +18,35 @@ export default function Contact() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 3000);
-  };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/contact/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (response.ok) {
+      setIsSubmitted(true);
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        message: '',
+      });
+      setTimeout(() => setIsSubmitted(false), 3000);
+    } else {
+      alert("Failed to send message");
+    }
+  } catch (error) {
+    console.error(error);
+    alert("Server error");
+  }
+};
 
   return (
     <div className="min-h-screen bg-off-white">
@@ -99,23 +123,23 @@ export default function Contact() {
               <div className="relative">
                 <input
                   type="text"
-                  name="subject"
-                  value={formData.subject}
+                  name="phone"
+                  value={formData.phone}
                   onChange={handleInputChange}
-                  onFocus={() => setFocusedField('subject')}
+                  onFocus={() => setFocusedField('phone')}
                   onBlur={() => setFocusedField(null)}
                   className="w-full px-6 py-4 bg-white border-b-2 border-stone/30 font-sans text-charcoal focus:outline-none focus:border-gold transition-all duration-300"
                   required
                 />
                 <motion.label
                   animate={{
-                    y: formData.subject || focusedField === 'subject' ? -28 : 0,
-                    scale: formData.subject || focusedField === 'subject' ? 0.85 : 1,
-                    color: focusedField === 'subject' ? '#C9A961' : '#8B8680',
+                    y: formData.phone || focusedField === 'phone' ? -28 : 0,
+                    scale: formData.phone || focusedField === 'phone' ? 0.85 : 1,
+                    color: focusedField === 'phone' ? '#C9A961' : '#8B8680',
                   }}
                   className="absolute left-6 top-4 font-sans text-stone pointer-events-none origin-left"
                 >
-                  Subject
+                  Phone
                 </motion.label>
               </div>
 

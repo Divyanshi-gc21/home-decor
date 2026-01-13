@@ -2,6 +2,8 @@
 import { BrowserRouter } from 'react-router-dom';
 import { AppRoutes } from './router';
 
+const __BASE_PATH__ = '/';
+
 function App() {
   return (
     <BrowserRouter basename={__BASE_PATH__}>
@@ -11,3 +13,5 @@ function App() {
 }
 
 export default App;
+
+

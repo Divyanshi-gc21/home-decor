@@ -1,6 +1,7 @@
 
 import { lazy } from 'react';
 import type { RouteObject } from 'react-router-dom';
+import Register from '../pages/register/page';
 
 const Home = lazy(() => import('../pages/home/page'));
 const Shop = lazy(() => import('../pages/shop/page'));
@@ -9,6 +10,7 @@ const Cart = lazy(() => import('../pages/cart/page'));
 const Checkout = lazy(() => import('../pages/checkout/page'));
 const About = lazy(() => import('../pages/about/page'));
 const Contact = lazy(() => import('../pages/contact/page'));
+const Profile = lazy(() => import('../pages/profile/page'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
 const routes: RouteObject[] = [
@@ -24,6 +26,12 @@ const routes: RouteObject[] = [
     path: '/product/:id',
     element: <Product />,
   },
+
+  {
+  path: '/register',
+  element: <Register />,
+  },
+
   {
     path: '/cart',
     element: <Cart />,
@@ -39,6 +47,10 @@ const routes: RouteObject[] = [
   {
     path: '/contact',
     element: <Contact />,
+  },
+  {
+    path: '/profile',
+    element: <Profile />,
   },
   {
     path: '*',

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { Link } from 'react-router-dom';
@@ -10,15 +10,74 @@ import { featuredProducts } from '../../mocks/products';
 export default function Shop() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
   const [priceRange, setPriceRange] = useState([0, 1000]);
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 });
+  const [backendProducts, setBackendProducts] = useState<any[]>([]);
+  const [sortOption, setSortOption] = useState('featured');
+  const [appliedPrice, setAppliedPrice] = useState([0, 1000]);
+  const [appliedCategory, setAppliedCategory] = useState('All');
+  const [appliedMaterials, setAppliedMaterials] = useState<string[]>([]);
+
+  useEffect(() => {
+  fetch('http://127.0.0.1:8000/api/products/')
+    .then(res => res.json())
+    .then(data => setBackendProducts(data))
+    .catch(err => console.error(err));
+}, []);
+
+
 
   const categories = ['All', 'Home Décor', 'Jewelry', 'Handicrafts'];
   const materials = ['Ceramic', 'Metal', 'Textile', 'Stone', 'Wood'];
 
-  const filteredProducts = selectedCategory === 'All' 
-    ? featuredProducts 
-    : featuredProducts.filter(p => p.category === selectedCategory);
+  const allProducts =
+  backendProducts.length > 0 ? backendProducts : featuredProducts;
+  
+  const filteredProducts = allProducts.filter((p) => {
+    // Normalize values from backend (strings) and mocks (numbers)
+    const productCategory = p.category || 'All';
+    const productMaterial = (p.material || '').toString();
+    const productPrice = Number(p.price ?? 0) || 0;
+
+    const matchCategory = appliedCategory === 'All' || productCategory === appliedCategory;
+    const matchPrice = productPrice >= appliedPrice[0] && productPrice <= appliedPrice[1];
+    const matchMaterial = appliedMaterials.length === 0 || appliedMaterials.includes(productMaterial);
+
+    return matchCategory && matchPrice && matchMaterial;
+  });
+
+
+     
+  let finalProducts = [...filteredProducts];
+
+  if (sortOption === 'low-high') {
+    finalProducts.sort((a, b) => Number(a.price) - Number(b.price));
+  }
+
+  if (sortOption === 'high-low') {
+    finalProducts.sort((a, b) => Number(b.price) - Number(a.price));
+  }
+
+  if (sortOption === 'newest') {
+    finalProducts.sort((a, b) => Number(b.id) - Number(a.id));
+  }
+  
+  const addToWishlist = async (productId: number) => {
+  try {
+    await fetch('http://127.0.0.1:8000/api/wishlist/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ product: productId }),
+    });
+    alert('Added to wishlist');
+  } catch (error) {
+    console.error(error);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-off-white">
@@ -80,7 +139,10 @@ export default function Shop() {
                   key={cat}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setAppliedCategory(cat);
+                  }}
                   className={`px-5 py-2 rounded-full font-sans text-sm transition-all duration-300 cursor-pointer whitespace-nowrap ${
                     selectedCategory === cat
                       ? 'bg-gold text-charcoal'
@@ -97,12 +159,17 @@ export default function Shop() {
             <span className="font-sans text-sm text-stone">
               {filteredProducts.length} Products
             </span>
-            <select className="px-4 py-2 bg-white border border-stone/20 rounded-full font-sans text-sm text-charcoal focus:outline-none focus:border-gold cursor-pointer">
-              <option>Sort by: Featured</option>
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
-              <option>Newest</option>
+            <select
+                  value={sortOption}
+                  onChange={(e) => setSortOption(e.target.value)}
+                  className="px-4 py-2 bg-white border border-stone/20 rounded-full font-sans text-sm text-charcoal"
+            >
+            <option value="featured">Sort by: Featured</option>
+            <option value="low-high">Price: Low to High</option>
+            <option value="high-low">Price: High to Low</option>
+            <option value="newest">Newest</option>
             </select>
+
           </div>
         </div>
 
@@ -138,9 +205,13 @@ export default function Shop() {
                     {categories.map((cat) => (
                       <label key={cat} className="flex items-center gap-3 cursor-pointer group">
                         <input
-                          type="checkbox"
+                          type="radio"
+                          name="category"
                           checked={selectedCategory === cat}
-                          onChange={() => setSelectedCategory(cat)}
+                          onChange={() => {
+                            setSelectedCategory(cat);
+                            setAppliedCategory(cat);
+                          }}
                           className="w-5 h-5 rounded border-2 border-stone/30 text-gold focus:ring-gold cursor-pointer"
                         />
                         <span className="font-sans text-sm text-stone group-hover:text-gold transition-colors">
@@ -157,12 +228,45 @@ export default function Shop() {
                     Price Range
                   </h4>
                   <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={priceRange[0]}
+                        onChange={(e) => {
+                          const newRange: [number, number] = [Number(e.target.value), priceRange[1]];
+                          setPriceRange(newRange);
+                          setAppliedPrice(newRange);
+                        }}
+                        className="w-1/2 px-3 py-2 border border-stone/20 rounded-lg font-sans text-sm text-charcoal"
+                        placeholder="Min"
+                      />
+                      <span className="text-stone">-</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="1000"
+                        value={priceRange[1]}
+                        onChange={(e) => {
+                          const newRange: [number, number] = [priceRange[0], Number(e.target.value)];
+                          setPriceRange(newRange);
+                          setAppliedPrice(newRange);
+                        }}
+                        className="w-1/2 px-3 py-2 border border-stone/20 rounded-lg font-sans text-sm text-charcoal"
+                        placeholder="Max"
+                      />
+                    </div>
                     <input
                       type="range"
                       min="0"
                       max="1000"
                       value={priceRange[1]}
-                      onChange={(e) => setPriceRange([0, parseInt(e.target.value)])}
+                      onChange={(e) => {
+                        const newRange: [number, number] = [priceRange[0], Number(e.target.value)];
+                        setPriceRange(newRange);
+                        setAppliedPrice(newRange);
+                      }}
                       className="w-full accent-gold cursor-pointer"
                     />
                     <div className="flex items-center justify-between">
@@ -182,6 +286,18 @@ export default function Shop() {
                       <label key={material} className="flex items-center gap-3 cursor-pointer group">
                         <input
                           type="checkbox"
+                          checked={selectedMaterials.includes(material)}
+                          onChange={(e) => {
+                            let newSelected: string[];
+                            if (e.target.checked) {
+                              newSelected = [...selectedMaterials, material];
+                            } else {
+                              newSelected = selectedMaterials.filter(m => m !== material);
+                            }
+                            setSelectedMaterials(newSelected);
+                            // Apply immediately so UI updates without pressing Apply
+                            setAppliedMaterials(newSelected);
+                          }}
                           className="w-5 h-5 rounded border-2 border-stone/30 text-gold focus:ring-gold cursor-pointer"
                         />
                         <span className="font-sans text-sm text-stone group-hover:text-gold transition-colors">
@@ -194,12 +310,18 @@ export default function Shop() {
 
                 {/* Apply Button */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-4 bg-gradient-to-r from-gold to-gold/80 text-charcoal font-sans text-sm tracking-widest uppercase rounded-full cursor-pointer whitespace-nowrap"
-                >
-                  Apply Filters
-                </motion.button>
+                     whileHover={{ scale: 1.02 }}
+                     whileTap={{ scale: 0.98 }}
+                     onClick={() => {
+                     setAppliedMaterials(selectedMaterials);
+                     setAppliedPrice(priceRange);
+                     setIsFilterOpen(false);
+                  }}
+  className="w-full py-4 bg-gradient-to-r from-gold to-gold/80 text-charcoal font-sans text-sm tracking-widest uppercase rounded-full cursor-pointer whitespace-nowrap"
+>
+  Apply Filters
+</motion.button>
+
               </div>
             </motion.div>
           )}
@@ -207,7 +329,7 @@ export default function Shop() {
 
         {/* Product Grid */}
         <div ref={ref} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {filteredProducts.map((product, index) => (
+          {finalProducts.map((product, index) => (
             <motion.div
               key={product.id}
               initial={{ opacity: 0, y: 40, scale: 0.95 }}
@@ -217,12 +339,24 @@ export default function Shop() {
               <Link to={`/product/${product.id}`} className="group block">
                 <div className="relative overflow-hidden rounded-lg aspect-[3/4] mb-4 bg-white shadow-md hover:shadow-xl transition-shadow duration-500">
                   <motion.img
-                    src={product.image}
+                    src={
+                    product.image || 'https://readdy.ai/api/search-image?query=luxury%20handcrafted%20product'
+                        }
                     alt={product.name}
                     className="w-full h-full object-cover"
                     whileHover={{ scale: 1.08 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                   />
+
+                  <button
+                        onClick={(e) => {
+                        e.preventDefault();
+                        addToWishlist(product.id);
+                        }}
+>
+                               ❤️
+                  </button>
+
                   
                   {/* Vignette Overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-100 group-hover:opacity-0 transition-opacity duration-500"></div>

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, Link } from 'react-router-dom';
 import Navbar from '../../components/feature/Navbar';
@@ -8,6 +8,7 @@ import { featuredProducts } from '../../mocks/products';
 
 export default function Product() {
   const { id } = useParams();
+  const [backendProducts, setBackendProducts] = useState<any[]>([]);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState('Gold');
@@ -15,9 +16,33 @@ export default function Product() {
   const [showMiniCart, setShowMiniCart] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>('description');
 
-  const product = featuredProducts.find(p => p.id === parseInt(id || '1')) || featuredProducts[0];
-  
-  const images = [product.image, product.image, product.image, product.image, product.image];
+  useEffect(() => {
+  fetch('http://127.0.0.1:8000/api/products/')
+    .then(res => res.json())
+    .then(data => setBackendProducts(data))
+    .catch(err => console.error(err));
+}, []);
+
+  const allProducts =
+  backendProducts.length > 0 ? backendProducts : featuredProducts;
+
+  const product = allProducts.find(p => p.id === parseInt(id || '1')) || allProducts[0];
+
+  // Provide defaults for missing properties
+  const productWithDefaults = {
+    ...product,
+    category: product.category || 'Home Décor',
+    material: product.material || 'Mixed',
+    badge: product.badge || 'Handcrafted',
+    rating: product.rating || 5,
+    price: product.price || 0,
+    image: product.image || 'https://readdy.ai/api/search-image?query=luxury%20handcrafted%20product',
+  };
+
+  const fallbackImage = productWithDefaults.image;
+
+  const images = [fallbackImage, fallbackImage, fallbackImage, fallbackImage, fallbackImage];
+
   const variants = ['Gold', 'Silver', 'Rose Gold'];
 
   const handleAddToCart = () => {
@@ -63,7 +88,7 @@ export default function Product() {
           <span className="text-gold">/</span>
           <Link to="/shop" className="hover:text-gold transition-colors">Shop</Link>
           <span className="text-gold">/</span>
-          <span className="text-charcoal">{product.category}</span>
+          <span className="text-charcoal">{productWithDefaults.category}</span>
         </motion.div>
 
         {/* Product Layout */}
@@ -79,16 +104,16 @@ export default function Product() {
               onClick={() => setIsLightboxOpen(true)}
             >
               <AnimatePresence mode="wait">
-                <motion.img
-                  key={selectedImage}
-                  src={images[selectedImage]}
-                  alt={product.name}
-                  initial={{ opacity: 0, scale: 1.05 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.4 }}
-                  className="w-full h-full object-cover"
-                />
+                  <motion.img
+                    key={selectedImage}
+                    src={images[selectedImage]}
+                    alt={productWithDefaults.name}
+                    initial={{ opacity: 0, scale: 1.05 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4 }}
+                    className="w-full h-full object-cover"
+                  />
               </AnimatePresence>
               
               {/* Zoom Icon */}
@@ -125,12 +150,12 @@ export default function Product() {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <h1 className="font-serif text-5xl font-bold text-charcoal mb-4 leading-tight">
-                {product.name}
+                {productWithDefaults.name}
               </h1>
 
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
+                  {[...Array(productWithDefaults.rating)].map((_, i) => (
                     <i key={i} className="ri-star-fill text-gold text-lg"></i>
                   ))}
                 </div>
@@ -139,11 +164,11 @@ export default function Product() {
 
               <div className="flex items-center gap-4 mb-8">
                 <span className="font-sans text-4xl font-bold text-gold">
-                  ${product.price}
+                  ${productWithDefaults.price}
                 </span>
-                {product.originalPrice && (
+                {productWithDefaults.originalPrice && (
                   <span className="font-sans text-2xl text-stone line-through">
-                    ${product.originalPrice}
+                    ${productWithDefaults.originalPrice}
                   </span>
                 )}
               </div>
@@ -299,7 +324,7 @@ export default function Product() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.8 }}
               src={images[selectedImage]}
-              alt={product.name}
+              alt={productWithDefaults.name}
               className="max-w-full max-h-full object-contain"
               onClick={(e) => e.stopPropagation()}
             />
@@ -330,13 +355,13 @@ export default function Product() {
             </div>
 
             <div className="flex gap-4 mb-8 pb-8 border-b border-stone/20">
-              <img src={product.image} alt={product.name} className="w-24 h-24 object-cover rounded-lg" />
+              <img src={productWithDefaults.image} alt={productWithDefaults.name} className="w-24 h-24 object-cover rounded-lg" />
               <div className="flex-1">
-                <h4 className="font-serif text-lg text-charcoal mb-2">{product.name}</h4>
+                <h4 className="font-serif text-lg text-charcoal mb-2">{productWithDefaults.name}</h4>
                 <p className="font-sans text-sm text-stone mb-2">{selectedVariant}</p>
                 <p className="font-sans text-sm text-stone">Qty: {quantity}</p>
               </div>
-              <span className="font-sans text-lg font-bold text-gold">${product.price * quantity}</span>
+              <span className="font-sans text-lg font-bold text-gold">${productWithDefaults.price * quantity}</span>
             </div>
 
             <div className="space-y-4">
